@@ -26,6 +26,7 @@ For the first set of instances of data the indexes are as follows:
 """
 import os
 import re
+import csv
 import numpy as np
 import pandas as pd
 from sklearn import metrics, svm, ensemble
@@ -35,12 +36,12 @@ from decorators import timer
 
 class SentimentData():
     def __init__(self, train_path: str, test_path: str, lbl: str):
-        df_train = pd.read_csv(train_path, encoding='utf-8')
-        df_test = pd.read_csv(test_path, encoding='utf-8')
-        self.X_train = np.array(df_train.drop([lbl], 1))
-        self.y_train = np.array(df_train[lbl])
-        self.X_test = np.array(df_test.drop([lbl], 1))
-        self.y_test = np.array(df_test[lbl])
+        self.df_train = pd.read_csv(train_path, encoding='utf-8')
+        self.df_test = pd.read_csv(test_path, encoding='utf-8')
+        self.X_train = np.array(self.df_train.drop([lbl], 1))
+        self.y_train = np.array(self.df_train[lbl])
+        self.X_test = np.array(self.df_test.drop([lbl], 1))
+        self.y_test = np.array(self.df_test[lbl])
 
         self.stopwords = ['a', "the", "is"]
 
@@ -127,6 +128,20 @@ class SentimentData():
             for line in test_data:
                 test.write(line)
 
+    @staticmethod
+    def overwrite_csv_column(csv_in_path: str, csv_out_path: str):
+        csv_in = open(csv_in_path, 'r')
+        csv_out = open(csv_out_path, 'w', newline='')
+        writer = csv.writer(csv_out)
+
+        for row in csv.reader(csv_in):
+            if row[-1] == '-1':
+                row[-1] = '0'
+            writer.writerow(row)
+        
+        csv_in.close()
+        csv_out.close()
+        
 @timer  
 def classify(clf, sent_data: object) -> float:
     """"
@@ -142,22 +157,21 @@ def classify(clf, sent_data: object) -> float:
     clf.fit(sent_data.X_train, sent_data.y_train)
     predicted = clf.predict(sent_data.X_test)
     print(metrics.classification_report(sent_data.y_test, predicted, digits=3))
+    print(f"Accuracy: {metrics.accuracy_score(sent_data.y_test, predicted)}")
 
 if __name__ == "__main__":
     sent_data = SentimentData(
-        "Data/ACL-2014-irony-master/irony-bow_train.csv",
-        "Data/ACL-2014-irony-master/irony-bow_test.csv",
+        "Data/ACL-2014-irony-master/irony-bow_train_fixed.csv",
+        "Data/ACL-2014-irony-master/irony-bow_test_fixed.csv",
         "label")
-
-    # SentimentData.sklearn_bow(
-    #     "Data/ACL-2014-irony-master/irony-labeled.csv",
-    #     "Data/ACL-2014-irony-master/irony-bow.csv",
-    #     "label")
 
     # SentimentData.train_test_split(
     #     "Data/ACL-2014-irony-master/irony-bow.csv", 
     #     "Data/ACL-2014-irony-master/irony-bow_train.csv", 
     #     "Data/ACL-2014-irony-master/irony-bow_test.csv",
     #     1949)
-    clf = svm.SVC(kernel='linear')
+
+    print(f"Train features: {sent_data.X_train.shape}\nTrain labels: {sent_data.y_train.shape}")
+    print(f"Test features: {sent_data.X_test.shape}\nTest labels: {sent_data.y_test.shape}")
+    clf = svm.LinearSVC()
     classify(clf, sent_data)
