@@ -31,9 +31,11 @@ import numpy as np
 import pandas as pd
 from sklearn import metrics, svm, ensemble
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
 
 from decorators import timer
+
+np.set_printoptions(threshold=np.nan)
 
 class SentimentData():
     def __init__(
@@ -43,8 +45,11 @@ class SentimentData():
 
         if single_file_path:
             df = pd.read_csv(single_file_path)
-            self.X = np.array(df_train.drop([lbl], 1))
-            self.y = np.array(df_train[lbl])
+            self.X = np.array(df.drop([lbl], 1))
+            # FIXME: work with any labelled column (strip string?)
+            self.y = np.array(df.iloc[:, -1])
+            self.X_train = []; self.y_train = []
+            self.X_test = []; self.y_test = []
             return
 
         df_train = pd.read_csv(train_path, encoding='utf-8')
@@ -79,6 +84,17 @@ class SentimentData():
             labels = self.y_test
 
         vocab = self.tokenise(features)
+
+    def stratified_kfold(
+        self, clf: object, shuffle: bool = True, 
+        splits: int = 10, rand_state: int = 0):
+        skf = StratifiedKFold(n_splits=splits, shuffle=shuffle, random_state=rand_state)
+        for train_idx, test_idx in skf.split(self.X, self.y):
+            X_train, X_test = self.X[train_idx], self.X[test_idx]
+            y_train, y_test = self.y[train_idx], self.y[test_idx] 
+            clf.fit(X_train, y_train)
+            predicted = clf.predict(X_test)
+            print(metrics.classification_report(y_test, predicted))
 
     @staticmethod
     def sklearn_bow(input_path: str, output_path: str, lbl: str):
@@ -185,8 +201,12 @@ if __name__ == "__main__":
     #     "Data/ACL-2014-irony-master/irony-bow_test.csv",
     #     1949)
 
-    print(f"Train features: {sent_data.X_train.shape}\nTrain labels: {sent_data.y_train.shape}")
-    print(f"Test features: {sent_data.X_test.shape}\nTest labels: {sent_data.y_test.shape}")
+    # print(f"Train features: {sent_data.X_train.shape}\nTrain labels: {sent_data.y_train.shape}")
+    # print(f"Test features: {sent_data.X_test.shape}\nTest labels: {sent_data.y_test.shape}")
     clf = svm.LinearSVC()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
+    y = sent_data.y
+    sent_data.stratified_kfold(clf, splits=2, rand_state=10)
+    X_train = sent_data.X_train
+    y_train = sent_data.y_train
+    # sent_data.X_train, sent_data.X_test, sent_data.y_train, sent_data.y_test = train_test_split(sent_data.X, sent_data.y, test_size=0.01, random_state=42)
     # classify(clf, sent_data)
