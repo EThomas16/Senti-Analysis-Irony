@@ -90,6 +90,8 @@ class SentimentData():
         splits: int = 10, rand_state: int = 0):
         skf = StratifiedKFold(n_splits=splits, shuffle=shuffle, random_state=rand_state)
         for train_idx, test_idx in skf.split(self.X, self.y):
+            # np.save("Data/ACL-2014-irony-master/k-fold_splits_train.npy", train_idx)
+            # np.save("Data/ACL-2014-irony-master/k-fold_splits_test.npy", test_idx)
             X_train, X_test = self.X[train_idx], self.X[test_idx]
             y_train, y_test = self.y[train_idx], self.y[test_idx] 
             clf.fit(X_train, y_train)
@@ -97,11 +99,17 @@ class SentimentData():
             print(metrics.classification_report(y_test, predicted))
 
     @staticmethod
-    def sklearn_bow(input_path: str, output_path: str, lbl: str):
+    def sklearn_bow(
+        input_path: str, output_path: str, lbl: str,
+        max_feats: int = 50000, stop_word_lang: str = "english"):
         df = pd.read_csv(input_path, encoding='utf-8')
         features = np.array(df.drop([lbl], 1))
         labels = np.array(df[lbl])
-        vectoriser = CountVectorizer()
+
+        vectoriser = CountVectorizer(
+            max_features=max_feats, 
+            stop_words=stop_word_lang)
+
         fts = vectoriser.fit_transform(features.flatten())
         with open(output_path, 'a', encoding='utf-8') as test:
             for feature_name in vectoriser.get_feature_names():
@@ -186,27 +194,45 @@ def classify(clf, sent_data: object) -> float:
     print(metrics.classification_report(sent_data.y_test, predicted, digits=3))
     print(f"Accuracy: {metrics.accuracy_score(sent_data.y_test, predicted)}")
 
+"""
+TEMPORARY METHODS
+"""
+
+def validate_kfold(train_path: str, test_path: str):
+    train = np.load(train_path)
+    test = np.load(test_path)
+
+    for train_idx in train:
+        for test_idx in test:
+            if test_idx == train_idx:
+                print("same value")
+
 if __name__ == "__main__":
+    data_root = "Data/ACL-2014-irony-master"
+    lbl = "label"
     # sent_data = SentimentData(
     #     "Data/ACL-2014-irony-master/irony-bow_train_fixed.csv",
     #     "Data/ACL-2014-irony-master/irony-bow_test_fixed.csv",
-    #     "label")
+    #     lbl)
+
+    # SentimentData.sklearn_bow(
+    #     f"{data_root}/irony-labeled.csv",
+    #     f"{data_root}/irony-bow_stop-words.csv",
+    #     lbl)
+
+    # sent_data = SentimentData(
+    #     single_file_path=f"{data_root}/csv/irony-bow.csv",
+    #     lbl=lbl)
+
     sent_data = SentimentData(
-        single_file_path="Data/ACL-2014-irony-master/irony-bow.csv",
-        lbl="label")
+        single_file_path="F:/Documents/Programming/LocalSandbox/Sentiment-Analysis/Review_Dataset/reviews_Video_Games_training.csv",
+        lbl="review_score"
+    )
 
-    # SentimentData.train_test_split(
-    #     "Data/ACL-2014-irony-master/irony-bow.csv", 
-    #     "Data/ACL-2014-irony-master/irony-bow_train.csv", 
-    #     "Data/ACL-2014-irony-master/irony-bow_test.csv",
-    #     1949)
-
-    # print(f"Train features: {sent_data.X_train.shape}\nTrain labels: {sent_data.y_train.shape}")
-    # print(f"Test features: {sent_data.X_test.shape}\nTest labels: {sent_data.y_test.shape}")
     clf = svm.LinearSVC()
-    y = sent_data.y
-    sent_data.stratified_kfold(clf, splits=2, rand_state=10)
-    X_train = sent_data.X_train
-    y_train = sent_data.y_train
+    sent_data.stratified_kfold(clf, splits=2, rand_state=50)
+    # validate_kfold(
+    #     "Data/ACL-2014-irony-master/k-fold_splits_train.npy", 
+    #     "Data/ACL-2014-irony-master/k-fold_splits_test.npy")
     # sent_data.X_train, sent_data.X_test, sent_data.y_train, sent_data.y_test = train_test_split(sent_data.X, sent_data.y, test_size=0.01, random_state=42)
     # classify(clf, sent_data)
