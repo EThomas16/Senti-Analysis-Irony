@@ -27,155 +27,17 @@ For the first set of instances of data the indexes are as follows:
 import os
 import re
 import csv
+import json
 import numpy as np
 import pandas as pd
-from sklearn import metrics, svm, ensemble
+from sklearn import metrics, svm, ensemble, naive_bayes, tree
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
+from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, StratifiedShuffleSplit
 
+import nlp_utils
 from decorators import timer
 
 np.set_printoptions(threshold=np.nan)
-
-class SentimentData():
-    def __init__(
-        self, train_path: str = "", test_path: str = "", 
-        lbl: str = "label", single_file_path: str = ""
-        ):
-
-        if single_file_path:
-            df = pd.read_csv(single_file_path)
-            self.X = np.array(df.drop([lbl], 1))
-            # FIXME: work with any labelled column (strip string?)
-            self.y = np.array(df.iloc[:, -1])
-            self.X_train = []; self.y_train = []
-            self.X_test = []; self.y_test = []
-            return
-
-        df_train = pd.read_csv(train_path, encoding='utf-8')
-        df_test = pd.read_csv(test_path, encoding='utf-8')
-        self.X_train = np.array(df_train.drop([lbl], 1))
-        self.y_train = np.array(df_train[lbl])
-        self.X_test = np.array(df_test.drop([lbl], 1))
-        self.y_test = np.array(df_test[lbl])
-
-        self.stopwords = ['a', "the", "is"]
-
-    def clean_data(self, sentence: str):
-        words = re.sub(r"[^\w]", " ", sentence).split()
-        cleaned_text = [word.lower() for word in words if word not in self.stopwords]
-        return cleaned_text
-
-    def tokenise(self, features):
-        words = []
-        for sentence in features:
-            cleaned_text = self.clean_data(sentence)
-            words.extend(cleaned_text)
-
-        words = sorted(list(set(words)))
-        return words
-
-    def bag_of_words(self, words: list, test_or_train: str):
-        if test_or_train == "train":
-            features = self.X_train
-            labels = self.y_train
-        elif test_or_train == "test":
-            features = self.X_test
-            labels = self.y_test
-
-        vocab = self.tokenise(features)
-
-    def stratified_kfold(
-        self, clf: object, shuffle: bool = True, 
-        splits: int = 10, rand_state: int = 0):
-        skf = StratifiedKFold(n_splits=splits, shuffle=shuffle, random_state=rand_state)
-        for train_idx, test_idx in skf.split(self.X, self.y):
-            # np.save("Data/ACL-2014-irony-master/k-fold_splits_train.npy", train_idx)
-            # np.save("Data/ACL-2014-irony-master/k-fold_splits_test.npy", test_idx)
-            X_train, X_test = self.X[train_idx], self.X[test_idx]
-            y_train, y_test = self.y[train_idx], self.y[test_idx] 
-            clf.fit(X_train, y_train)
-            predicted = clf.predict(X_test)
-            print(metrics.classification_report(y_test, predicted))
-
-    @staticmethod
-    def sklearn_bow(
-        input_path: str, output_path: str, lbl: str,
-        max_feats: int = 50000, stop_word_lang: str = "english"):
-        df = pd.read_csv(input_path, encoding='utf-8')
-        features = np.array(df.drop([lbl], 1))
-        labels = np.array(df[lbl])
-
-        vectoriser = CountVectorizer(
-            max_features=max_feats, 
-            stop_words=stop_word_lang)
-
-        fts = vectoriser.fit_transform(features.flatten())
-        with open(output_path, 'a', encoding='utf-8') as test:
-            for feature_name in vectoriser.get_feature_names():
-                test.write(f"{feature_name},")
-            test.write("label\n")
-            for ft, label in zip(fts.toarray(), labels):
-                for instance in ft:
-                    test.write(f"{instance},")
-                test.write(f"{label}\n")            
-
-    @staticmethod
-    def scan_data_dir(data_dir: str, ext: str = '.csv') -> list:
-        """
-        Scans a given directory to find all dataset files (isolates them from other file types)
-
-        Keyword arguments:
-        data_dir -- the directory containing the data in question
-        ext -- the file extension of the files to be extracted
-
-        Returns:
-        data_files -- a list of all files of a given extension in the data_dir directory
-        """
-        data_files = []
-
-        for path, subdir, files in os.walk(data_dir):
-            for f_name in files:
-                if ext in f_name:
-                    f_path = os.path.join(path, f_name)
-                    data_files.append(f_path)
-
-        return data_files
-
-    @staticmethod
-    def train_test_split(original_path: str, train_path: str, test_path: str, num_instances: int, enc: str = 'utf-8'):
-        train_data = []
-        test_data = []
-        with open(original_path, 'r', encoding='utf-8') as csv:
-            for idx, line in enumerate(csv.readlines()):
-                if "[deleted]" in line:
-                    continue
-                if idx <= (round(num_instances * 0.8)):
-                    train_data.append(line)
-                else:
-                    test_data.append(line)
-
-        with open(train_path, 'a', encoding='utf-8') as train:
-            for line in train_data:
-                train.write(line)
-
-        with open(test_path, 'a', encoding='utf-8') as test:
-            for line in test_data:
-                test.write(line)
-
-    @staticmethod
-    def overwrite_csv_column(csv_in_path: str, csv_out_path: str):
-        csv_in = open(csv_in_path, 'r')
-        csv_out = open(csv_out_path, 'w', newline='')
-        writer = csv.writer(csv_out)
-
-        for row in csv.reader(csv_in):
-            if row[-1] == '-1':
-                row[-1] = '0'
-            writer.writerow(row)
-        
-        csv_in.close()
-        csv_out.close()
         
 @timer  
 def classify(clf, sent_data: object) -> float:
@@ -224,13 +86,43 @@ if __name__ == "__main__":
     #     single_file_path=f"{data_root}/csv/irony-bow.csv",
     #     lbl=lbl)
 
-    sent_data = SentimentData(
-        single_file_path="F:/Documents/Programming/LocalSandbox/Sentiment-Analysis/Review_Dataset/reviews_Video_Games_training.csv",
-        lbl="review_score"
-    )
+    # sent_data = SentimentData(
+    #     single_file_path="F:/Documents/Programming/LocalSandbox/Sentiment-Analysis/Review_Dataset/reviews_Video_Games_training.csv",
+    #     lbl="review_score"
+    # )
 
-    clf = svm.LinearSVC()
-    sent_data.stratified_kfold(clf, splits=2, rand_state=50)
+    features, labels = nlp_utils.read_json(
+        "Data/Sarcasm_Headlines_Dataset.json", "headline", "is_sarcastic")
+
+    sarc = []
+    non_sarc = []
+    for label in labels:
+        if int(label) == 1:
+            sarc.append(label)
+        else:
+            non_sarc.append(label)
+
+    print(f"Sarcastic instances: {len(sarc)}")
+    print(f"Non-Sarcastic instances: {len(non_sarc)}")
+
+    y = np.array(labels)
+    X = nlp_utils.sklearn_bow_list(features)
+
+    sent_data = nlp_utils.TextData()
+    sent_data.X = X
+    sent_data.y = y
+
+    # X_train, X_test, y_train, y_test = train_test_split(
+    #     X, y, test_size=0.3
+    # )
+
+    skf = StratifiedKFold(n_splits=10, shuffle=True)
+    shuffle_split = StratifiedShuffleSplit(n_splits=1)
+
+    clf = naive_bayes.MultinomialNB()
+    sent_data.stratify(shuffle_split, clf)
+
+    # sent_data.stratified_kfold(clf, splits=2, rand_state=50)
     # validate_kfold(
     #     "Data/ACL-2014-irony-master/k-fold_splits_train.npy", 
     #     "Data/ACL-2014-irony-master/k-fold_splits_test.npy")
