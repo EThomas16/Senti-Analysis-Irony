@@ -14,6 +14,12 @@ class TextData():
         lbl: str = "label", single_file_path: str = "",
         stopwords = ["a", "the", "is"]):
 
+        self.stopwords = stopwords
+        self.eval_metric_methods = {
+            "accuracy" : metrics.accuracy_score,
+            "f-score" : metrics.f1_score
+        }
+
         if single_file_path:
             df = pd.read_csv(single_file_path)
             self.X = np.array(df.drop([lbl], 1))
@@ -27,8 +33,6 @@ class TextData():
             return
 
         self.read_train_test_csvs(train_path, test_path, lbl)
-
-        self.stopwords = stopwords
 
     def read_train_test_csvs(self, train_path: str, test_path: str, lbl: str):
         """
@@ -76,7 +80,7 @@ class TextData():
         return words
 
     def stratify(
-        self, split_algorithm: object, clf: object):
+        self, split_algorithm: object, clf: object, eval_metric: str = "accuracy"):
         """
         Stratifies the data using the provided splitting algorithm. This is used to split datasets
         into training and test, as well as in cross-validation of datasets
@@ -85,13 +89,17 @@ class TextData():
         split_algorithm -- the stratification algorithm to use to split the data (scikit-learn tested)
         clf -- the classifier to use to classify the splits
         """
+        score_list = []
         for train_idx, test_idx in split_algorithm.split(self.X, self.y):
             X_train, X_test = self.X[train_idx], self.X[test_idx]
             y_train, y_test = self.y[train_idx], self.y[test_idx] 
             clf.fit(X_train, y_train)
             predicted = clf.predict(X_test)
             # TODO: return the performance scores instead of just printing them
-            print(metrics.classification_report(y_test, predicted))
+            print(f"{'-'*30}DEBUG{'-'*30}\n{metrics.classification_report(y_test, predicted)}\n{'-'*65}")
+            score_list.append(self.eval_metric_methods[eval_metric](y_test, predicted))
+
+        return score_list
 
 def sklearn_bow(
     input_path: str, output_path: str, lbl: str,
