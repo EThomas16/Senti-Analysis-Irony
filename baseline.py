@@ -120,7 +120,9 @@ if __name__ == "__main__":
     shuffle_split = StratifiedShuffleSplit(n_splits=1)
 
     clf = naive_bayes.MultinomialNB()
-    sent_data.stratify(shuffle_split, clf)
+    scores = sent_data.stratify(skf, clf, eval_metric="accuracy")
+    for idx, score in enumerate(scores):
+        print(f"Iteration {idx} accuracy: {score}")
 
     # sent_data.stratified_kfold(clf, splits=2, rand_state=50)
     # validate_kfold(
