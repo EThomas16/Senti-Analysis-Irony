@@ -2,7 +2,7 @@ import nlp_utils
 import numpy as np
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.model_selection import train_test_split, StratifiedShuffleSplit, StratifiedKFold
 from sklearn import naive_bayes, svm
 
 def generate_doc2vec_model(features: list, vec_size: int = 5) -> object:
@@ -18,13 +18,22 @@ def infer_vector_doc2vec(model: object, document: list, min_alpha: float) -> lis
 if __name__ == "__main__":
     features, labels = nlp_utils.read_json(
         "Data/Sarcasm_Headlines_Dataset.json", "headline", "is_sarcastic")
-    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2)
-    model = generate_doc2vec_model(X_train)
+    # X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2)
+    # model = generate_doc2vec_model(features)
+
+    # model.save("Data/models/headlines_test_model.d2v")
+    model = Doc2Vec.load("Data/models/headlines_test_model.d2v")
 
     doc_vectors = []
-    for instance in X_test:
+    for instance in features:
         doc_vectors.append(infer_vector_doc2vec(model, instance, model.min_alpha))
 
-    clf = naive_bayes.MultinomialNB()
-    score = cross_val_score(clf, doc_vectors, y_test)
-    print(str(np.mean(score)) + str(np.std(score)))
+    # clf = naive_bayes.MultinomialNB()
+    clf = svm.LinearSVC()
+    data = nlp_utils.TextData()
+    data.X = np.array(doc_vectors)
+    data.y = np.array(labels)
+    
+    shuffle_split = StratifiedShuffleSplit(n_splits=1)
+    skf = StratifiedKFold(n_splits=10)
+    data.stratify(shuffle_split, clf)
