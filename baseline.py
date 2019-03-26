@@ -119,9 +119,16 @@ if __name__ == "__main__":
     skf = StratifiedKFold(n_splits=10, shuffle=True)
     shuffle_split = StratifiedShuffleSplit(n_splits=1)
 
+<<<<<<< HEAD
     # clf = naive_bayes.BernoulliNB()
     clf = svm.LinearSVC()
     sent_data.stratify(shuffle_split, clf)
+=======
+    clf = naive_bayes.MultinomialNB()
+    scores = sent_data.stratify(skf, clf, eval_metric="accuracy")
+    for idx, score in enumerate(scores):
+        print(f"Iteration {idx} accuracy: {score}")
+>>>>>>> d02f2e767235f7f9f1feb986b6f8660a2503b7d9
 
     # sent_data.stratified_kfold(clf, splits=2, rand_state=50)
     # validate_kfold(
