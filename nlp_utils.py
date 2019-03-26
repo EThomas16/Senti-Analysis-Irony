@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pandas as pd
 from sklearn import metrics
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, StratifiedShuffleSplit
 
 class TextData():
@@ -93,9 +93,26 @@ class TextData():
             # TODO: return the performance scores instead of just printing them
             print(metrics.classification_report(y_test, predicted))
 
-def sklearn_bow(
+def __load_vectoriser(max_feats: int, stop_word_lang: str, vectoriser: str):
+    if vectoriser == "bag-of-words":
+        vectoriser = CountVectorizer(
+            max_features=max_feats, 
+            stop_words=stop_word_lang)
+    elif vectoriser == "tf-idf":
+        vectoriser = TfidfVectorizer(
+            max_features=max_feats, 
+            stop_words=stop_word_lang)
+    else:
+        print("Invalid vectoriser given, assigning bag-of-words as default")
+        vectoriser = CountVectorizer(
+            max_features=max_feats, 
+            stop_words=stop_word_lang)
+
+    return vectoriser
+
+def vectorise_feature_file(
     input_path: str, output_path: str, lbl: str,
-    max_feats: int = 50000, stop_word_lang: str = "english"):
+    max_feats: int = 50000, stop_word_lang: str = "english", vectoriser: str = "bag-of-words"):
     """
     Generates bag-of-words features from a given CSV file of features
 
@@ -110,9 +127,7 @@ def sklearn_bow(
     features = np.array(df.drop([lbl], 1))
     labels = np.array(df[lbl])
 
-    vectoriser = CountVectorizer(
-        max_features=max_feats, 
-        stop_words=stop_word_lang)
+    vectoriser = __load_vectoriser(max_feats, stop_word_lang, vectoriser)
 
     fts = vectoriser.fit_transform(features.flatten())
     with open(output_path, 'a', encoding='utf-8') as test:
@@ -124,8 +139,8 @@ def sklearn_bow(
                 test.write(f"{instance},")
             test.write(f"{label}\n") 
 
-def sklearn_bow_list(
-    features: list, max_feats: int = 50000, stop_word_lang: str = "english") -> object:
+def vectorise_feature_list(
+    features: list, max_feats: int = 50000, stop_word_lang: str = "english", vectoriser: str = "bag-of-words") -> object:
     """
     Generates bag-of-words features from a list of sentences
 
@@ -137,10 +152,7 @@ def sklearn_bow_list(
     Returns:
     A vectoriser that has been fitted to the provided sentences
     """
-    vectoriser = CountVectorizer(
-        max_features=max_feats,
-        stop_words=stop_word_lang
-    )
+    vectoriser = __load_vectoriser(max_feats, stop_word_lang, vectoriser)
 
     return vectoriser.fit_transform(features)
 
