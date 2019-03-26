@@ -106,7 +106,7 @@ if __name__ == "__main__":
     print(f"Non-Sarcastic instances: {len(non_sarc)}")
 
     y = np.array(labels)
-    X = nlp_utils.sklearn_bow_list(features)
+    X = nlp_utils.vectorise_feature_list(features, vectoriser="tf-idf")
 
     sent_data = nlp_utils.TextData()
     sent_data.X = X
@@ -119,7 +119,8 @@ if __name__ == "__main__":
     skf = StratifiedKFold(n_splits=10, shuffle=True)
     shuffle_split = StratifiedShuffleSplit(n_splits=1)
 
-    clf = naive_bayes.MultinomialNB()
+    # clf = naive_bayes.BernoulliNB()
+    clf = svm.LinearSVC()
     sent_data.stratify(shuffle_split, clf)
 
     # sent_data.stratified_kfold(clf, splits=2, rand_state=50)
