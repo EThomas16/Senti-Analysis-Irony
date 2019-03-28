@@ -2,6 +2,7 @@ import os
 import re
 import csv
 import json
+import time
 
 import numpy as np
 import pandas as pd
@@ -93,16 +94,19 @@ class TextData():
         clf -- the classifier to use to classify the splits
         """
         score_list = []
+        execution_times = []
         for train_idx, test_idx in split_algorithm.split(self.X, self.y):
             X_train, X_test = self.X[train_idx], self.X[test_idx]
             y_train, y_test = self.y[train_idx], self.y[test_idx] 
+            start_time = time.time()
             clf.fit(X_train, y_train)
             predicted = clf.predict(X_test)
+            execution_times.append(time.time() - start_time)
             # TODO: return the performance scores instead of just printing them
             print(f"{'-'*30}DEBUG{'-'*30}\n{metrics.classification_report(y_test, predicted)}\n{'-'*65}")
             score_list.append(self.eval_metric_methods[eval_metric](y_test, predicted))
 
-        return score_list
+        return score_list, execution_times
 
 def __load_vectoriser(max_feats: int, stop_word_lang: str, vectoriser: str) -> object:
     """
@@ -317,3 +321,7 @@ def overwrite_csv_column(csv_in_path: str, csv_out_path: str, column_idx: int, v
     
     csv_in.close()
     csv_out.close()
+
+def write_results_stratification(result_file: str, clf: str, score: float, fold: int, execution_time: float):
+    with open(result_file, 'a') as results:
+        results.write(f"{clf},{score},{fold},{execution_time}\n")
