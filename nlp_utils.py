@@ -2,11 +2,13 @@ import os
 import re
 import csv
 import json
+
 import numpy as np
 import pandas as pd
 from sklearn import metrics
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, StratifiedShuffleSplit
+from nltk.stem import PorterStemmer, LancasterStemmer
 
 class TextData():
     def __init__(
@@ -17,7 +19,8 @@ class TextData():
         self.stopwords = stopwords
         self.eval_metric_methods = {
             "accuracy" : metrics.accuracy_score,
-            "f-score" : metrics.f1_score
+            "f-score" : metrics.f1_score,
+            "conf matrix" : metrics.confusion_matrix
         }
 
         if single_file_path:
@@ -101,7 +104,18 @@ class TextData():
 
         return score_list
 
-def __load_vectoriser(max_feats: int, stop_word_lang: str, vectoriser: str):
+def __load_vectoriser(max_feats: int, stop_word_lang: str, vectoriser: str) -> object:
+    """
+    Loads the specified vectoriser using the provided arguments
+
+    Keyword arguments:
+    max_feats -- the maximum number of features for a data instance
+    stop_word_lang -- the language to use as the stop word dictionray
+    vectoriser -- the vectoriser type to use, either bag-of-words of tf-idf
+
+    Returns:
+    A vectoriser object of the specified type
+    """
     if vectoriser == "bag-of-words":
         vectoriser = CountVectorizer(
             max_features=max_feats, 
@@ -117,6 +131,49 @@ def __load_vectoriser(max_feats: int, stop_word_lang: str, vectoriser: str):
             stop_words=stop_word_lang)
 
     return vectoriser
+
+def __load_stemmer(stemmer_type: str) -> object:
+    """
+    Loads a stemmer based on the provided argument
+
+    Keyword arguments:
+    stemmer_type -- the type of stemmer to be used, either Porter or Lancaster
+
+    Returns:
+    A stemmer object of the specified type
+    """
+    if stemmer_type == "Porter":
+        stemmer = PorterStemmer()
+    elif stemmer_type == "Lancaster":
+        stemmer = LancasterStemmer()
+    
+    return stemmer
+
+def concatenate_features(feature_sets: tuple, axis: int = 1):
+    concatenated_features = np.concatenate(feature_sets, axis=1)
+    return np.array(concatenated_features)
+
+def stem_words(features: list, stemmer_type: str = "Porter") -> list:
+    """
+    Stems words using the specified stemmer type, changing them to their root
+    i.e. gaming -> game
+    
+    Keyword arguments:
+    features -- 2D array of all documents in a dataset
+    stemmer_type -- the stemmer to be used i.e. Porter, Lancaster etc. Default: Porter
+    
+    Returns:
+    The stemmed features that have been stemmed using the specified stemmer
+    """
+    stemmer = __load_stemmer(stemmer_type)
+    new_features = []
+    for feature_set in features:
+        temp_instance = []
+        for word in feature_set:
+            temp_instance.append(stemmer.stem(word))
+        new_features.append(temp_instance)
+        
+    return features
 
 def vectorise_feature_file(
     input_path: str, output_path: str, lbl: str,
