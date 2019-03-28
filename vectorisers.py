@@ -34,13 +34,13 @@ if __name__ == "__main__":
     features, labels = nlp_utils.read_json(
         "Data/Sarcasm_Headlines_Dataset.json", "headline", "is_sarcastic")
     
-    # features = nlp_utils.stem_words(features)
-    # X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2)
+    features = nlp_utils.stem_words(features)
     model = generate_doc2vec_model(features)
     # model.save("Data/models/headlines_test_model.d2v")
     # model = Doc2Vec.load("Data/models/headlines_test_model.d2v")    
     doc_vectors = generate_doc2vec_vectors(model)
     # bow_features = nlp_utils.vectorise_feature_list(features, vectoriser="bag-of-words")
+    tfidf_features = nlp_utils.vectorise_feature_list(features, vectoriser="tf-idf")
 
     doc_vectors = np.array(doc_vectors)
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -48,19 +48,20 @@ if __name__ == "__main__":
     # doc_vectors = normalize(doc_vectors, axis=1)
     # doc_vectors = Normalizer(copy=False).fit_transform(doc_vectors)
     # bow_features = np.array(bow_features.toarray())
-    # concatenated_features = nlp_utils.concatenate_features((doc_vectors, bow_features))
+    tfidf_features = np.array(tfidf_features.toarray())
+    concatenated_features = nlp_utils.concatenate_features((doc_vectors, tfidf_features))
 
-    clf = naive_bayes.MultinomialNB()
+    clf = naive_bayes.BernoulliNB()
     # clf = svm.LinearSVC()
     data = nlp_utils.TextData()
-    data.X = doc_vectors
+    data.X = concatenated_features
     data.y = np.array(labels)
     
     shuffle_split = StratifiedShuffleSplit(n_splits=1)
     skf = StratifiedKFold(n_splits=10)
     scores, times = data.stratify(skf, clf, eval_metric="f-score")
     
-    '''results_file_path = "Results/d2v_results_skf_non-stem.csv"
+    results_file_path = "Results/concatenated_results_tfidf_d2v_skf_stem.csv"
     # reset_file(results_file_path, "Classifier,Score,Fold,Execution Time")
     for idx, (score, time) in enumerate(zip(scores, times)):
-        nlp_utils.write_results_stratification(results_file_path, "Bernoulli NB", score, idx+1, time)'''
+        nlp_utils.write_results_stratification(results_file_path, "Bernoulli NB", score, idx+1, time)
