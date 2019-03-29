@@ -94,16 +94,16 @@ if __name__ == "__main__":
     features, labels = nlp_utils.read_json(
         "Data/Sarcasm_Headlines_Dataset.json", "headline", "is_sarcastic")
 
-    sarc = []
-    non_sarc = []
-    for label in labels:
-        if int(label) == 1:
-            sarc.append(label)
-        else:
-            non_sarc.append(label)
+    # sarc = []
+    # non_sarc = []
+    # for label in labels:
+    #     if int(label) == 1:
+    #         sarc.append(label)
+    #     else:
+    #         non_sarc.append(label)
 
-    print(f"Sarcastic instances: {len(sarc)}")
-    print(f"Non-Sarcastic instances: {len(non_sarc)}")
+    # print(f"Sarcastic instances: {len(sarc)}")
+    # print(f"Non-Sarcastic instances: {len(non_sarc)}")
 
     y = np.array(labels)
     X = nlp_utils.vectorise_feature_list(features, vectoriser="tf-idf")
@@ -119,16 +119,9 @@ if __name__ == "__main__":
     skf = StratifiedKFold(n_splits=10, shuffle=True)
     shuffle_split = StratifiedShuffleSplit(n_splits=1)
 
-<<<<<<< HEAD
     # clf = naive_bayes.BernoulliNB()
     clf = svm.LinearSVC()
     sent_data.stratify(shuffle_split, clf)
-=======
-    clf = naive_bayes.MultinomialNB()
-    scores = sent_data.stratify(skf, clf, eval_metric="accuracy")
-    for idx, score in enumerate(scores):
-        print(f"Iteration {idx} accuracy: {score}")
->>>>>>> d02f2e767235f7f9f1feb986b6f8660a2503b7d9
 
     # sent_data.stratified_kfold(clf, splits=2, rand_state=50)
     # validate_kfold(
