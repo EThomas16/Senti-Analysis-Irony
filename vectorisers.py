@@ -1,3 +1,38 @@
+"""
+Experiments TODO:
+    - Feature extraction
+    - Pre-processing
+    - Classifiers
+
+Datasets:
+    - News Headlines
+    - IAC
+    - ACL-Irony
+
+Feature extraction:
+    - Bag-of-words/TF-IDF
+    - doc2vec
+    - LDA
+    - Text blobs
+    + Concatenation
+
+Pre-processing:
+    - Stemming
+    - Stop word removal
+    - Punctuation removal
+    - Lemmatisation
+    + Combinations of each
+
+Classifiers:
+    - Naive Bayes
+        - Multinomial
+        - Bernoulli
+    - SVM
+        - Linear
+        - Liblinear
+        - RBF (+ other non-linear)
+"""
+
 import nlp_utils
 import numpy as np
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
@@ -37,36 +72,44 @@ if __name__ == "__main__":
         "Data/Sarcasm_Headlines_Dataset.json", "headline", "is_sarcastic")
     
     features = nlp_utils.stem_words(features)
-    model = generate_doc2vec_model(features, vec_size=300)
+    # model = generate_doc2vec_model(features, vec_size=300)
     # model.save("Data/models/headlines_test_model.d2v")
     # model = Doc2Vec.load("Data/models/headlines_test_model.d2v")    
-    doc_vectors = generate_doc2vec_vectors(model)
-    # bow_features = nlp_utils.vectorise_feature_list(features, vectoriser="bag-of-words")
-    tfidf_features = nlp_utils.vectorise_feature_list(features, vectoriser="tf-idf")
+    # doc_vectors = generate_doc2vec_vectors(model)
+    bow_features = nlp_utils.vectorise_feature_list(features, vectoriser="bag-of-words")
+    # tfidf_features = nlp_utils.vectorise_feature_list(features, vectoriser="tf-idf")
 
-    doc_vectors = np.array(doc_vectors)
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    doc_vectors = scaler.fit_transform(doc_vectors)
-    # bow_features = np.array(bow_features.toarray())
-    tfidf_features = np.array(tfidf_features.toarray())
-    concatenated_features = nlp_utils.concatenate_features((doc_vectors, tfidf_features))
-    clf = naive_bayes.MultinomialNB()
-    # clf = svm.LinearSVC()
+    # scaler = MinMaxScaler(feature_range=(0, 1))
+    # doc_vectors = scaler.fit_transform(np.array(doc_vectors))
+    bow_features = np.array(bow_features.toarray())
+    # tfidf_features = np.array(tfidf_features.toarray())
+    # concatenated_features = nlp_utils.concatenate_features((doc_vectors, tfidf_features))
+    # clf = naive_bayes.MultinomialNB()
+    clf = svm.LinearSVC()
     # clf = LinearDiscriminantAnalysis()
     data = nlp_utils.TextData()
-    data.X = concatenated_features
+    data.X = bow_features
     data.y = np.array(labels)
     
     # shuffle_split = StratifiedShuffleSplit(n_splits=1)
     seeds = [6, 40, 32, 17, 19]
     all_scores = []; all_times = []
-    for seed in seeds:
-        skf = StratifiedKFold(n_splits=2, random_state=seed)
-        scores, times = data.stratify(skf, clf, eval_metric="f-score")
-        all_scores.extend([scores[0], scores[1]])
-        all_times.extend([times[0], times[1]])
+    upper_bound = 11
+    for c_val in range(10, upper_bound):
+        print(f"Current C: {c_val}")
+        avg_scores = []; avg_times = []
+        clf = svm.LinearSVC(C=c_val)
 
-    results_file_path = "Results/d2v_skf_stem.csv"
-    # reset_file(results_file_path, "Classifier,Score,Fold,Execution Time")
+        for idx, seed in enumerate(seeds):
+            skf = StratifiedKFold(n_splits=2, random_state=seed)
+            scores, times = data.stratify(skf, clf, eval_metric="f-score")
+            avg_scores.extend([scores[0], scores[1]])
+            avg_times.extend([times[0], times[1]])
+ 
+        all_scores.append(sum(avg_scores)/upper_bound)
+        all_times.append(sum(avg_times)/upper_bound)
+
+    results_file_path = "Results/News-Headlines/Bag-of-Words/bow_svm_stemming.csv"
+    # reset_file(results_file_path, "Classifier,Score,C-value,Execution Time")
     for idx, (score, time) in enumerate(zip(all_scores, all_times)):
-        nlp_utils.write_results_stratification(results_file_path, "Multinomial NB", score, idx+1, time)
+        nlp_utils.write_results_stratification(results_file_path, "Liblinear SVM", score, idx+1, time)

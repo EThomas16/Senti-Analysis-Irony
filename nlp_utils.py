@@ -103,7 +103,7 @@ class TextData():
             predicted = clf.predict(X_test)
             execution_times.append(time.time() - start_time)
             # TODO: return the performance scores instead of just printing them
-            print(f"{'-'*30}DEBUG{'-'*30}\n{metrics.classification_report(y_test, predicted)}\n{'-'*65}")
+            # print(f"{'-'*30}DEBUG{'-'*30}\n{metrics.classification_report(y_test, predicted)}\n{'-'*65}")
             score_list.append(self.eval_metric_methods[eval_metric](y_test, predicted))
 
         return score_list, execution_times
