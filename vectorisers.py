@@ -73,49 +73,47 @@ def write_results(output_file: str, features: list, labels: list):
     # model.save("Data/models/headlines_test_model.d2v")
     # model = Doc2Vec.load("Data/models/headlines_test_model.d2v")    
     # doc_vectors = generate_doc2vec_vectors(model)
-    for feat in range(101, 151):
-        feat *= 100
-        bow_features = nlp_utils.vectorise_feature_list(features, max_feats=feat, ngrams=(1, 4), vectoriser="bag-of-words")
-        # tfidf_features = nlp_utils.vectorise_feature_list(features, vectoriser="tf-idf")
+    # bow_features = nlp_utils.vectorise_feature_list(features, max_feats=feat, ngrams=(1, 4), vectoriser="bag-of-words")
+    tfidf_features = nlp_utils.vectorise_feature_list(features, max_feats=5000, ngrams=(1, 4), vectoriser="tf-idf")
 
-        # scaler = MinMaxScaler(feature_range=(0, 1))
-        # doc_vectors = scaler.fit_transform(np.array(doc_vectors))
-        bow_features = np.array(bow_features.toarray())
-        # tfidf_features = np.array(tfidf_features.toarray())
-        # concatenated_features = nlp_utils.concatenate_features((doc_vectors, tfidf_features))
-        data = nlp_utils.TextData()
-        data.X = bow_features
-        data.y = np.array(labels)
-        
-        # shuffle_split = StratifiedShuffleSplit(n_splits=1)
-        seeds = [6, 40, 32, 17, 19]
-        all_scores = []; all_times = []; params = []
-        for c_val in range(100, 101):
-            c_val /= 100
-            print(f"Current hyper-parameter: {c_val}")
-            avg_scores = []; avg_times = []
-            # clf = svm.LinearSVC(C=c_val)
-            clf = naive_bayes.MultinomialNB(alpha=c_val)
-
-            for idx, seed in enumerate(seeds):
-                skf = StratifiedKFold(n_splits=2, random_state=seed)
-                scores, times = data.stratify(skf, clf, eval_metric="f-score")
-                avg_scores.extend([scores[0], scores[1]])
-                avg_times.extend([times[0], times[1]])
+    # scaler = MinMaxScaler(feature_range=(0, 1))
+    # doc_vectors = scaler.fit_transform(np.array(doc_vectors))
+    # bow_features = np.array(bow_features.toarray())
+    tfidf_features = np.array(tfidf_features.toarray())
+    # concatenated_features = nlp_utils.concatenate_features((doc_vectors, tfidf_features))
+    data = nlp_utils.TextData()
+    data.X = tfidf_features
+    data.y = np.array(labels)
     
-            all_scores.append(sum(avg_scores)/len(avg_scores))
-            all_times.append(sum(avg_times)/len(avg_times))
-            params.append(feat)
-            print(all_scores)
+    # shuffle_split = StratifiedShuffleSplit(n_splits=1)
+    seeds = [6, 40, 32, 17, 19]
+    all_scores = []; all_times = []; params = []
+    for c_val in range(1, 51):
+        c_val /= 100
+        print(f"Current hyper-parameter: {c_val}")
+        avg_scores = []; avg_times = []
+        # clf = svm.LinearSVC(C=c_val)
+        clf = naive_bayes.MultinomialNB(alpha=c_val)
 
-        # reset_file(output_file, "Classifier,Score,Num Feats,Execution Time")
-        for idx, (score, time, param) in enumerate(zip(all_scores, all_times, params)):
-            nlp_utils.write_results_stratification(output_file, "Multinomial NB", score, param, time)
+        for idx, seed in enumerate(seeds):
+            skf = StratifiedKFold(n_splits=2, random_state=seed)
+            scores, times = data.stratify(skf, clf, eval_metric="f-score")
+            avg_scores.extend([scores[0], scores[1]])
+            avg_times.extend([times[0], times[1]])
+
+        all_scores.append(sum(avg_scores)/len(avg_scores))
+        all_times.append(sum(avg_times)/len(avg_times))
+        params.append(c_val)
+        
+    # reset_file(output_file, "Classifier,Score,Alpha,Execution Time")
+    for idx, (score, time, param) in enumerate(zip(all_scores, all_times, params)):
+        nlp_utils.write_results_stratification(output_file, "Multinomial NB", score, param, time)
 
 if __name__ == "__main__":
     features, labels = nlp_utils.read_json(
         "Data/Sarcasm_Headlines_Dataset.json", "headline", "is_sarcastic")
     
-    write_results("Results/News-Headlines/Bag-of-Words/bow_max_feats.csv", features, labels)
+    # nlp_utils.generate_pos_tags(features)
+    write_results("Results/News-Headlines/TF-IDF/tfidf_nb_new.csv", features, labels)
     
     

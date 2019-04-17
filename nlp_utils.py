@@ -10,6 +10,7 @@ from sklearn import metrics
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, StratifiedShuffleSplit
 from nltk.stem import PorterStemmer, LancasterStemmer
+from nltk import word_tokenize, pos_tag
 
 class TextData():
     def __init__(
@@ -224,6 +225,10 @@ def vectorise_feature_list(
     vectoriser = __load_vectoriser(max_feats, stop_word_lang, vectoriser)
 
     return vectoriser.fit_transform(features)
+
+def generate_pos_tags(features: list):
+    for document in features:
+        tagged = pos_tag(word_tokenize(document))
 
 def read_json(json_path: str, feature_heading: str, label_heading: str) -> (list, list):
     """
