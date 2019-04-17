@@ -209,7 +209,7 @@ def vectorise_feature_file(
             test.write(f"{label}\n") 
 
 def vectorise_feature_list(
-    features: list, max_feats: int = 50000, stop_word_lang: str = "english", vectoriser: str = "bag-of-words") -> object:
+    features: list, max_feats: int = 50000, stop_word_lang: str = "english", ngrams: tuple = (1, 2), vectoriser: str = "bag-of-words") -> object:
     """
     Generates bag-of-words features from a list of sentences
 
