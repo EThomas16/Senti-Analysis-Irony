@@ -9,8 +9,11 @@ import pandas as pd
 from sklearn import metrics
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, StratifiedShuffleSplit
-from nltk.stem import PorterStemmer, LancasterStemmer
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.preprocessing import MinMaxScaler
+from nltk.stem import PorterStemmer, LancasterStemmer, WordNetLemmatizer
 from nltk import word_tokenize, pos_tag
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 
 class TextData():
     def __init__(
@@ -21,7 +24,7 @@ class TextData():
         self.stopwords = stopwords
         self.eval_metric_methods = {
             "accuracy" : metrics.accuracy_score,
-            "f-score" : metrics.f1_score,
+            "f1-score" : metrics.f1_score,
             "conf matrix" : metrics.confusion_matrix
         }
 
@@ -109,7 +112,58 @@ class TextData():
 
         return score_list, execution_times
 
-def __load_vectoriser(max_feats: int, stop_word_lang: str, vectoriser: str) -> object:
+class DocumentEmbeddings():
+    def __init__(self, features: list, vec_size: int):
+        self.create_model(features, vec_size)
+
+    def create_model(self, features: list, vec_size: int):
+        """
+        Generates a doc2vec model, storing the model as an attribute of the class
+
+        Keyword Arguments:
+        features -- all features for a corpus
+        vec_size -- length of each document vector
+        """
+        documents = []
+        for idx, doc in enumerate(features):
+            documents.append(TaggedDocument(doc, [idx]))
+        
+        self.model = Doc2Vec(documents, vector_size=vec_size, window=2, min_count=1, workers=4)
+
+    def vectorise(self, normalise_range: tuple = None):
+        """
+        Vectorises document vectors from the trained model and normalises them
+
+        Keyword arguments:
+        normalise_range -- values within which to normalise each vector
+
+        Returns:
+        An array of the trained document vectors
+        """
+        doc_vectors = []
+        for vector in self.model.docvecs.vectors_docs:
+            doc_vectors.append(vector)
+
+        if type(normalise_range) is tuple:
+            scaler = MinMaxScaler(feature_range=normalise_range)
+            doc_vectors = scaler.fit_transform(np.array(doc_vectors))
+
+        return doc_vectors
+
+    def infer_vector_doc2vec(self, document: list, min_alpha: float) -> list:
+        """
+        Used to infer a vector from a single document, for testing and domain transferral purposes
+
+        Keyword arguments:
+        document -- the document to be vectorised
+        min_alpha -- the minimum learning rate during training
+
+        Returns:
+        The inferred vector for the document
+        """
+        return self.model.infer_vector(document.split(' '), min_alpha=min_alpha)
+
+def __load_vectoriser(max_feats: int, ngrams: tuple, stop_word_lang: str, vectoriser: str) -> object:
     """
     Loads the specified vectoriser using the provided arguments
 
@@ -124,15 +178,18 @@ def __load_vectoriser(max_feats: int, stop_word_lang: str, vectoriser: str) -> o
     if vectoriser == "bag-of-words":
         vectoriser = CountVectorizer(
             max_features=max_feats, 
+            ngram_range=ngrams,
             stop_words=stop_word_lang)
     elif vectoriser == "tf-idf":
         vectoriser = TfidfVectorizer(
             max_features=max_feats, 
+            ngram_range=ngrams,
             stop_words=stop_word_lang)
     else:
         print("Invalid vectoriser given, assigning bag-of-words as default")
         vectoriser = CountVectorizer(
-            max_features=max_feats, 
+            max_features=max_feats,
+            ngram_range=ngrams, 
             stop_words=stop_word_lang)
 
     return vectoriser
@@ -151,10 +208,29 @@ def __load_stemmer(stemmer_type: str) -> object:
         stemmer = PorterStemmer()
     elif stemmer_type == "Lancaster":
         stemmer = LancasterStemmer()
-    
+
     return stemmer
 
+def __load_lemmatiser(lemmatiser_type: str) -> object:
+    """
+    Loads a lemmatiser based on the provided argument
+
+    Keyword arguments:
+    lemmatiser_type -- the type of lemmatiser to be used, currently only WordNet
+
+    Returns:
+    A lemmatiser object of the specified type
+    """
+    if lemmatiser_type == "WordNet":
+        lemmatiser = WordNetLemmatizer()
+
+    # TODO: expand with more lemmatisers
+
+    return lemmatiser
+
 def concatenate_features(feature_sets: tuple, axis: int = 1):
+    """
+    """
     concatenated_features = np.concatenate(feature_sets, axis=1)
     return np.array(concatenated_features)
 
@@ -178,11 +254,33 @@ def stem_words(features: list, stemmer_type: str = "Porter") -> list:
             temp_instance.append(stemmer.stem(word))
         new_features.append(temp_instance)
         
-    return features
+    return new_features
+
+def lemmatise_words(features: list, lemmatiser_type: str = "WordNet") -> list:
+    """
+    Lemmatises words through removing suffixes and prefixes whilst maintaining
+    the meaning of the word
+
+   Keyword arguments:
+   features -- 2D array of all documents in a dataset
+   lemmatiser_type -- the lemmatiser to be used i.e. WordNet, which is the default
+
+   Returns:
+   Array of the lemmatised features to be used in feature extraction
+    """
+    lemmatiser = __load_lemmatiser(lemmatiser_type)
+    new_features = []
+    for feature_set in features:
+        temp_instance = []
+        for word in feature_set:
+            temp_instance.append(lemmatiser.lemmatize(word))
+        new_features.append(temp_instance)
+        
+    return new_features
 
 def vectorise_feature_file(
     input_path: str, output_path: str, lbl: str,
-    max_feats: int = 50000, stop_word_lang: str = "english", vectoriser: str = "bag-of-words"):
+    max_feats: int = 50000, ngrams: tuple = (1, 2), stop_word_lang: str = "english", vectoriser: str = "bag-of-words"):
     """
     Generates bag-of-words features from a given CSV file of features
 
@@ -197,7 +295,7 @@ def vectorise_feature_file(
     features = np.array(df.drop([lbl], 1))
     labels = np.array(df[lbl])
 
-    vectoriser = __load_vectoriser(max_feats, stop_word_lang, vectoriser)
+    vectoriser = __load_vectoriser(max_feats, ngrams, stop_word_lang, vectoriser)
 
     fts = vectoriser.fit_transform(features.flatten())
     with open(output_path, 'a', encoding='utf-8') as test:
@@ -210,7 +308,7 @@ def vectorise_feature_file(
             test.write(f"{label}\n") 
 
 def vectorise_feature_list(
-    features: list, max_feats: int = 50000, stop_word_lang: str = "english", ngrams: tuple = (1, 2), vectoriser: str = "bag-of-words") -> object:
+    features: list, max_feats: int = 50000, ngrams: tuple = (1, 2), stop_word_lang: str = "english", vectoriser: str = "bag-of-words") -> object:
     """
     Generates bag-of-words features from a list of sentences
 
@@ -222,11 +320,29 @@ def vectorise_feature_list(
     Returns:
     A vectoriser that has been fitted to the provided sentences
     """
-    vectoriser = __load_vectoriser(max_feats, stop_word_lang, vectoriser)
+    vectoriser = __load_vectoriser(max_feats, ngrams, stop_word_lang, vectoriser)
 
     return vectoriser.fit_transform(features)
 
+def vectorise_lda(features: list, components: int = 10, learn_decay: float = 0.7, rand_state: int = 40) -> list:
+    """
+    Uses the probabilstic approach of LDA to transform pre-vectorised features
+
+    Keyword arguments:
+    features -- list of all the sentences to be converted
+    components -- number of topics to be used in generating LDA features
+    learn_decay -- the speed at which the learning rate decreases
+    rand_state -- the random state used in initialising the LDA object
+
+    Returns:
+    The transformed features using the parameters specified for the LDA object
+    """
+    lda = LatentDirichletAllocation(n_components=components, learning_decay=learn_decay, random_state=rand_state)
+    return lda.fit_transform(features)
+
 def generate_pos_tags(features: list):
+    """
+    """
     for document in features:
         tagged = pos_tag(word_tokenize(document))
 
@@ -327,6 +443,16 @@ def overwrite_csv_column(csv_in_path: str, csv_out_path: str, column_idx: int, v
     csv_in.close()
     csv_out.close()
 
-def write_results_stratification(result_file: str, clf: str, score: float, fold: int, execution_time: float):
+def write_results_stratification(result_file: str, clf: str, score: float, changed_parameter: int, execution_time: float):
+    """
+    Used to format the stratification results in a specific manner
+
+    Keyword arguments:
+    result_file -- the file to write the results to
+    clf -- the classifier used to obtain the results
+    score -- the score obtained from classification
+    changed_parameter -- the value that has been changed throughout testing i.e. Alpha for Naive Bayes
+    execution_time -- time taken for fitting and predicting using the given classifier
+    """
     with open(result_file, 'a') as results:
-        results.write(f"{clf},{score},{fold},{execution_time}\n")
+        results.write(f"{clf},{score},{changed_parameter},{execution_time}\n")
