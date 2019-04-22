@@ -65,11 +65,11 @@ def write_results(output_file: str, features: list, labels: list):
     seeds = [6, 40, 32, 17, 19]
     all_scores = []; all_times = []; hyper_parameters = []
 
-    for val in range(5, 7):
-        val *= 5
+    for val in range(25, 26):
+        val *= 50
         print(f"Current hyper-parameter: {val}")
         avg_scores = []; avg_times = []
-        clf = svm.SVC(kernel='rbf', C=val)
+        clf = svm.SVC(kernel='rbf', C=5000, gamma='auto')
         # clf = svm.LinearSVC(C=val)
         # clf = naive_bayes.MultinomialNB(alpha=val)
 
@@ -86,7 +86,7 @@ def write_results(output_file: str, features: list, labels: list):
     # TODO: delete this file after using
     # reset_file(output_file, "Classifier,Score,C-value,Execution Time")
     for idx, (score, _time, val) in enumerate(zip(all_scores, all_times, hyper_parameters)):
-        nlp_utils.write_results_stratification(output_file, "RBF SVM", score, val, _time)
+        nlp_utils.write_results_stratification(output_file, "RBF SVM", score, 5000, _time)
 
 if __name__ == "__main__":
     features, labels = nlp_utils.read_json(
