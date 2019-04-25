@@ -99,6 +99,7 @@ class TextData():
         """
         score_list = []
         execution_times = []
+
         for train_idx, test_idx in split_algorithm.split(self.X, self.y):
             X_train, X_test = self.X[train_idx], self.X[test_idx]
             y_train, y_test = self.y[train_idx], self.y[test_idx] 
@@ -106,8 +107,6 @@ class TextData():
             clf.fit(X_train, y_train)
             predicted = clf.predict(X_test)
             execution_times.append(time.time() - start_time)
-            # TODO: return the performance scores instead of just printing them
-            # print(f"{'-'*30}DEBUG{'-'*30}\n{metrics.classification_report(y_test, predicted)}\n{'-'*65}")
             score_list.append(self.eval_metric_methods[eval_metric](y_test, predicted))
 
         return score_list, execution_times
