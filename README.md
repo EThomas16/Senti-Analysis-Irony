@@ -1,26 +1,26 @@
 ## Senti-Analysis-Irony
 
-This is a *work in progress* and is not finalised.
+Sarcasm and irony recognition using machine learning and text mining techniques.
 
 ### Description
 
 Sentiment Analysis with relation to sarcasm and irony is a complex issue, given the nuances of spoken and written language. There are several aims that this dataset and classifier aim to do:
 - Provide a strong ensemble classifier to classify whether an input 'document' (a document being a given segment of text) is ironic or not.
-- Build on previous works to improve the performance of irony recognition. Previous works include:
-    - *insert previous works in this list*
+- Utilise existing datasets to classify both sarcasm and irony, analysing the effect of context on recognition of these linguistic features.
 
-### Features
+### Datasets
+- [ACL-Irony](https://github.com/bwallace/ACL-2014-irony), [Wallace, Kertz & Cherniak](https://www.aclweb.org/anthology/P14-2084) (2014).
+- [News Headlines](https://www.kaggle.com/rmisra/news-headlines-dataset-for-sarcasm-detection).
 
-There are several features this code will implement:
-- Reusable custom dataset setup through scraping twitter or other websites.
-- User definition of tags to search for, to allow the dataset setup to be reused if required.
-- Creation of an ensemble classifier for recognition of irony in a given document.
+### Results
+- ACL-Irony: bag-of-words and doc2vec concatenation with Multinomial Naive Bayes -- 0.440 f1-score.
+- News Headlines: bag-of-words and Multinomial Naive Bayes -- 0.770 f1-score. UPDATE
 
 ### Requirements
 
 These scripts are built using Python 3.7, and require the following modules:
 - [Scikit-Learn](http://scikit-learn.org/stable/install.html).
-- *add to list as required*
+- [Gensim](https://radimrehurek.com/gensim/install.html).
 
 ### Author
 
