@@ -12,7 +12,6 @@ from sklearn.model_selection import cross_val_score, train_test_split, Stratifie
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.preprocessing import MinMaxScaler
 from nltk.stem import PorterStemmer, LancasterStemmer, WordNetLemmatizer
-from nltk import word_tokenize, pos_tag
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 
 class TextData():
@@ -31,7 +30,6 @@ class TextData():
         if single_file_path:
             df = pd.read_csv(single_file_path)
             self.X = np.array(df.drop([lbl], 1))
-            # FIXME: work with any labelled column (strip string?)
             self.y = np.array(df.iloc[:, -1])
             self.X_train = []; self.y_train = []
             self.X_test = []; self.y_test = []
@@ -99,7 +97,6 @@ class TextData():
         """
         score_list = []
         execution_times = []
-
         for train_idx, test_idx in split_algorithm.split(self.X, self.y):
             X_train, X_test = self.X[train_idx], self.X[test_idx]
             y_train, y_test = self.y[train_idx], self.y[test_idx] 
@@ -223,14 +220,12 @@ def __load_lemmatiser(lemmatiser_type: str) -> object:
     if lemmatiser_type == "WordNet":
         lemmatiser = WordNetLemmatizer()
 
-    # TODO: expand with more lemmatisers
-
     return lemmatiser
 
 def concatenate_features(feature_sets: tuple, axis: int = 1):
     """
     """
-    concatenated_features = np.concatenate(feature_sets, axis=1)
+    concatenated_features = np.concatenate(feature_sets, axis=axis)
     return np.array(concatenated_features)
 
 def stem_words(features: list, stemmer_type: str = "Porter") -> list:
@@ -248,11 +243,8 @@ def stem_words(features: list, stemmer_type: str = "Porter") -> list:
     stemmer = __load_stemmer(stemmer_type)
     new_features = []
     for feature_set in features:
-        temp_instance = []
-        for word in feature_set:
-            temp_instance.append(stemmer.stem(word))
-        new_features.append(temp_instance)
-        
+        new_features.append(stemmer.stem(feature_set))
+
     return new_features
 
 def lemmatise_words(features: list, lemmatiser_type: str = "WordNet") -> list:
@@ -270,10 +262,7 @@ def lemmatise_words(features: list, lemmatiser_type: str = "WordNet") -> list:
     lemmatiser = __load_lemmatiser(lemmatiser_type)
     new_features = []
     for feature_set in features:
-        temp_instance = []
-        for word in feature_set:
-            temp_instance.append(lemmatiser.lemmatize(word))
-        new_features.append(temp_instance)
+        new_features.append(lemmatiser.lemmatize(feature_set))
         
     return new_features
 
@@ -338,12 +327,6 @@ def vectorise_lda(features: list, components: int = 10, learn_decay: float = 0.7
     """
     lda = LatentDirichletAllocation(n_components=components, learning_decay=learn_decay, random_state=rand_state)
     return lda.fit_transform(features)
-
-def generate_pos_tags(features: list):
-    """
-    """
-    for document in features:
-        tagged = pos_tag(word_tokenize(document))
 
 def read_json(json_path: str, feature_heading: str, label_heading: str) -> (list, list):
     """
