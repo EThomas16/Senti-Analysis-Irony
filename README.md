@@ -22,6 +22,8 @@ Sentiment Analysis with relation to sarcasm and irony is a complex issue, given 
 These scripts are built using Python 3.7, and require the following modules:
 - [Scikit-Learn](http://scikit-learn.org/stable/install.html).
 - [Gensim](https://radimrehurek.com/gensim/install.html).
+- [NLTK](https://www.nltk.org/install.html).
+- Numpy
 
 ### Scripts
 
