@@ -61,7 +61,10 @@ class TextData():
         Removes unwanted characters from a sentence using regular expressions
 
         Keyword arguments:
-        sentence -- 
+        sentence -- the sentence to be cleaned
+
+        Returns:
+        The sentence that has been changed to lowercase, as well as cleaned of any unnecessary characters
         """
         words = re.sub(r"[^\w]", " ", sentence).split()
         cleaned_text = [word.lower() for word in words if word not in self.stopwords]
@@ -224,9 +227,13 @@ def __load_lemmatiser(lemmatiser_type: str) -> object:
 
 def concatenate_features(feature_sets: tuple, axis: int = 1):
     """
+    Concatenates two feature sets along a specified axis
+
+    Keyword arguments:
+    feature_sets -- the two feature arrays to be merged
+    axis -- the axis which they will be merged along
     """
-    concatenated_features = np.concatenate(feature_sets, axis=axis)
-    return np.array(concatenated_features)
+    return np.concatenate(feature_sets, axis=axis)
 
 def stem_words(features: list, stemmer_type: str = "Porter") -> list:
     """
