@@ -15,7 +15,7 @@ Sentiment Analysis with relation to sarcasm and irony is a complex issue, given 
 ### Results
 
 - ACL-Irony: bag-of-words and doc2vec concatenation with Multinomial Naive Bayes -- 0.440 f1-score.
-- News Headlines: bag-of-words and Multinomial Naive Bayes -- 0.770 f1-score.
+- News Headlines: bag-of-words and Multinomial Naive Bayes -- 0.775 f1-score.
 
 ### Requirements
 
