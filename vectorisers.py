@@ -18,16 +18,16 @@ def write_results(output_file: str, features: list, labels: list):
     """
     features = nlp_utils.stem_words(features)
     features = nlp_utils.lemmatise_words(features)
-    # doc_embeddings = nlp_utils.DocumentEmbeddings(features, vec_size=1680)
-    # doc_vectors = doc_embeddings.vectorise(normalise_range=(0, 1))
+    doc_embeddings = nlp_utils.DocumentEmbeddings(features, vec_size=1680)
+    doc_vectors = doc_embeddings.vectorise(normalise_range=(0, 1))
     vectorised_features = nlp_utils.vectorise_feature_list(features, max_feats=11000, ngrams=(1, 3), vectoriser="bag-of-words")
 
     # lda_features = nlp_utils.vectorise_lda(vectorised_features, components=n_components)
-    # concatenated_features = np.concatenate((
-    #     doc_vectors, np.array(vectorised_features.toarray())), axis=1)
+    concatenated_features = np.concatenate((
+        doc_vectors, np.array(vectorised_features.toarray())), axis=1)
 
     data = nlp_utils.TextData()
-    data.X = vectorised_features
+    data.X = concatenated_features
     data.y = np.array(labels)
             
     all_scores = []; all_times = []; hyper_parameters = []
@@ -52,14 +52,12 @@ def write_results(output_file: str, features: list, labels: list):
         hyper_parameters.append(val)
 
     # uncomment this to format a file in the desired manner
-    # reset_file(output_file, "Classifier,Score,Alpha,Execution Time")
+    reset_file(output_file, "Classifier,Score,C-Value,Execution Time")
     for (score, _time, val) in zip(all_scores, all_times, hyper_parameters):
-        nlp_utils.write_results_stratification(output_file, "Multinomial NB", score, val, _time)
+        nlp_utils.write_results_stratification(output_file, "Linear SVM", score, val, _time)
 
 if __name__ == "__main__":
     features, labels = nlp_utils.read_json(
         "Data/Sarcasm_Headlines_Dataset.json", "headline", "is_sarcastic")
     
-    write_results("Results/News-Headlines/Bag-of-Words/bow_pre-processing.csv", features, labels)
-    
-    
+    write_results("Results/News-Headlines/Concatenated/bow_d2v_svm.csv", features, labels)
